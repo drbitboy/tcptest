@@ -92,7 +92,7 @@ int server(int argc, char *argv[])
                 ticks = time(NULL);
                 snprintf(sendBuff, sizeof sendBuff, "%.24s\n", ctime(&ticks));
                 errno = 0;
-                if (argc<2 || strcmp(argv[1],"--close"))
+                if (argc<2 || (strcmp(argv[1],"--close") && strcmp(argv[1],"--no-send")))
                 {
                     fprintf(stderr, "W%ld\n", nw=write(connfd, sendBuff, strlen(sendBuff)));
                     if (nw < 0)
@@ -102,11 +102,16 @@ int server(int argc, char *argv[])
                         connfd = -1;
                     }
                 }
+                else if (!strcmp(argv[1],"--close"))
+                {
+                    // Close FD without sending anything
+                    fprintf(stderr, "Closing fd %d[%s]\n", connfd, "because of --close argument");
+                    close(connfd);
+                    connfd = -1;
+                }
                 else
                 {
-                        fprintf(stderr, "Closing fd %d[%s]\n", connfd, "because of --close argument");
-                        close(connfd);
-                        connfd = -1;
+                    fprintf(stderr, "Writeable fd %d[%s]\n", connfd, "doing nothing because of --no-send argument");
                 }
             }
         }
