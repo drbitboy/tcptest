@@ -174,11 +174,11 @@ int client(int argc, char *argv[])
 
     if(n < 0)
     {
-        fprintf(stderr, "Read error[%s]", strerror(errno));
+        fprintf(stderr, "Read error[%s]\n", strerror(errno));
     }
     else if(!n)
     {
-        fprintf(stderr, "Remote connection closed during read[%s]", strerror(errno));
+        fprintf(stderr, "Remote connection closed during read[%s]\n", strerror(errno));
     }
 
     close(sockfd);
