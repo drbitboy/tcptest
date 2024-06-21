@@ -189,27 +189,29 @@ int client(int argc, char *argv[])
     }
     if (!n)
     {
-        fprintf(stderr, "Select timed out[%s]", strerror(errno));
+        fprintf(stderr, "Select timed out[%s]; closing sockfd[%d]\n", strerror(errno), sockfd);
     }
-
-    errno = 0;
-    while ( (n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0)
+    else
     {
-        recvBuff[n] = 0;
-        if(fputs(recvBuff, stdout) == EOF)
+        errno = 0;
+        while ( (n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0)
         {
-            printf("\n Error : Fputs error\n");
+            recvBuff[n] = 0;
+            if(fputs(recvBuff, stdout) == EOF)
+            {
+                printf("\n Error : Fputs error\n");
+            }
+            break;
         }
-        break;
-    }
 
-    if(n < 0)
-    {
-        fprintf(stderr, "Read error[%s]\n", strerror(errno));
-    }
-    else if(!n)
-    {
-        fprintf(stderr, "Remote connection closed during read[%s]; closing socket[%d]\n", strerror(errno),sockfd);
+        if(n < 0)
+        {
+            fprintf(stderr, "Read error[%s]\n", strerror(errno));
+        }
+        else if(!n)
+        {
+            fprintf(stderr, "Remote connection closed during read[%s]; closing socket[%d]\n", strerror(errno),sockfd);
+        }
     }
 
     close(sockfd);
