@@ -104,12 +104,12 @@ int server(int argc, char *argv[])
                 }
                 else if (!strcmp(argv[1],"--close"))
                 {
-                    // Close FD without sending anything
-                    fprintf(stderr, "Closing fd %d[%s]\n", connfd, "because of --close argument");
+                    // Close FD without writing anything
+                    fprintf(stderr, "Closing, without writing, fd %d[%s]\n", connfd, "because of --close argument");
                     close(connfd);
                     connfd = -1;
                 }
-                else
+                else if (!strcmp(argv[1],"--no-send"))
                 {
                     fprintf(stderr, "Writeable fd %d[%s]\n", connfd, "doing nothing because of --no-send argument");
                 }
@@ -181,7 +181,8 @@ int client(int argc, char *argv[])
     {
         fprintf(stderr, "Read error[%s]\n", strerror(errno));
     }
-    else if(!n)
+
+    if(!n)
     {
         fprintf(stderr, "Remote connection closed during read[%s]; closing socket[%d]\n", strerror(errno),sockfd);
     }
