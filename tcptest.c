@@ -176,6 +176,10 @@ int client(int argc, char *argv[])
     {
         fprintf(stderr, "Read error[%s]", strerror(errno));
     }
+    else if(!n)
+    {
+        fprintf(stderr, "Remote connection closed during read[%s]", strerror(errno));
+    }
 
     close(sockfd);
 
