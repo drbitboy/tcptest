@@ -26,8 +26,8 @@ int server(int argc, char *argv[])
 {
     int listenfd = 0;
     int connfd = -1;
-    int maxfd = 0;
     struct sockaddr_in serv_addr;
+    int maxfd = 0;
     fd_set fds[3];
     fd_set* rfds = fds;
     fd_set* wfds = fds+1;
@@ -135,6 +135,15 @@ int client(int argc, char *argv[])
     int sockfd = 0, n = 0;
     char recvBuff[1024];
     struct sockaddr_in serv_addr;
+    int maxfd = 0;
+
+    struct timeval tv5s = {5, 0};
+    struct timeval tv;
+
+    fd_set fds[3];
+    fd_set* rfds = fds;
+    fd_set* wfds = fds+1;
+    fd_set* efds = fds+2;
 
     if(argc != 2)
     {
@@ -164,6 +173,23 @@ int client(int argc, char *argv[])
     {
        printf("\n Error : Connect Failed \n");
        return 1;
+    }
+
+    FD_ZERO(rfds); FD_ZERO(wfds); FD_ZERO(efds);
+    FD_SET(sockfd, rfds);
+    FD_SET(sockfd, efds);
+
+    tv = tv5s;
+    errno = 0;
+    while (0 > (n=select(sockfd+1, rfds, wfds, efds, &tv)))
+    {
+        if (errno != EINTR) { perror("Non-EINTR error in select"); return -1; }
+        fprintf(stderr,"%s\n", "I");
+        errno = 0;
+    }
+    if (!n)
+    {
+        fprintf(stderr, "Select timed out[%s]", strerror(errno));
     }
 
     errno = 0;
