@@ -104,7 +104,7 @@ int server(int argc, char *argv[])
                 }
                 else
                 {
-                        fprintf(stderr, "Closing fd %d[%s]\n", connfd, "becasuse of --close argument");
+                        fprintf(stderr, "Closing fd %d[%s]\n", connfd, "because of --close argument");
                         close(connfd);
                         connfd = -1;
                 }
