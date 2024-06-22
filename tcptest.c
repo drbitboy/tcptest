@@ -112,6 +112,8 @@ int server(int argc, char *argv[])
                 else if (!strcmp(argv[1],"--no-send"))
                 {
                     fprintf(stderr, "Writeable fd %d[%s]\n", connfd, "doing nothing because of --no-send argument");
+                    *sendBuff = '\0';
+                    fprintf(stderr, "W%ld\n", nw=write(connfd, sendBuff, 1));
                 }
             }
         }
