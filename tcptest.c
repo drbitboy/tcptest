@@ -33,8 +33,18 @@ int server(int argc, char *argv[])
     fd_set* rfds = fds;
     fd_set* wfds = fds+1;
     fd_set* efds = fds+2;
+    int opt_close = 0;
+    int opt_no_send = 0;
+    int opt_debug = 0;
 
     noSIGPIPE();
+
+    for (int iarg=1; iarg<argc; ++iarg)
+    {
+        if (!strcmp(argv[iarg],"--close")) { opt_close = 1; continue; }
+        if (!strcmp(argv[iarg],"--no-send")) { opt_no_send = 1; continue; }
+        if (!strcmp(argv[iarg],"--debug")) { opt_debug = 1; continue; }
+    }
 
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
     memset(&serv_addr, '0', sizeof serv_addr);
@@ -52,18 +62,24 @@ int server(int argc, char *argv[])
         struct timeval tv2s = {2, 0};
         struct timeval tv;
         int n;
+
         maxfd = 0;
+
         FD_ZERO(rfds); FD_ZERO(wfds); FD_ZERO(efds);
         FD_SET(listenfd, rfds);
         FD_SET(listenfd, efds);
         maxfd = listenfd > maxfd ? listenfd : maxfd;
+
         if (connfd > -1)
         {
             FD_SET(connfd, wfds);
             FD_SET(connfd, efds);
             maxfd = connfd > maxfd ? connfd : maxfd;
         }
-        fprintf(stderr, "%16lx %16lx %16lx before\n", *((long*)rfds), *((long*)wfds), *((long*)efds));
+        if (opt_debug)
+        {
+            fprintf(stderr, "%16lx %16lx %16lx before\n", *((long*)rfds), *((long*)wfds), *((long*)efds));
+        }
 
         tv = tv2s;
         errno = 0;
@@ -77,7 +93,11 @@ int server(int argc, char *argv[])
         fprintf(stderr,"S%d/%d/%lu/%lu\n", n, connfd, tv.tv_sec, tv.tv_usec);
         if (n < 0) { fprintf(stderr, "S/%s\n", strerror(errno)); }
         if (tv.tv_sec || tv.tv_usec) { select(0, NULL, NULL, NULL, &tv); }
-        fprintf(stderr, "%16lx %16lx %16lx after\n", *((long*)rfds), *((long*)wfds), *((long*)efds));
+
+        if (opt_debug)
+        {
+            fprintf(stderr, "%16lx %16lx %16lx after\n", *((long*)rfds), *((long*)wfds), *((long*)efds));
+        }
 
         if (connfd > -1)
         {
@@ -121,6 +141,7 @@ int server(int argc, char *argv[])
                         fprintf(stderr, "Writeable fd %d[closing after %d no-sends]\n", connfd, no_sends);
                         close(connfd);
                         connfd = -1;
+                        no_sends = 0;
                     }
                 }
             }
@@ -131,7 +152,7 @@ int server(int argc, char *argv[])
             fprintf(stderr, "EL%d\n", listenfd);
         }
 
-        if (FD_ISSET(listenfd,rfds))
+        if (connfd == -1 && FD_ISSET(listenfd,rfds))
         {
             connfd = accept(listenfd, (pSS)NULL, NULL);
             fprintf(stderr, "L%d\n", connfd);
