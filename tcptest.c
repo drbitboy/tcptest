@@ -147,14 +147,14 @@ int client(int argc, char *argv[])
 
     if(argc != 2)
     {
-        printf("\n Usage: %s <ip of server> \n",argv[0]);
+        fprintf(stderr, "\n Usage: %s <ip of server> \n",argv[0]);
         return 1;
     }
 
     memset(recvBuff, '0',sizeof(recvBuff));
     if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
-        printf("\n Error : Could not create socket \n");
+        fprintf(stderr, "ERROR:  Could not create socket\n");
         return 1;
     }
 
@@ -165,15 +165,18 @@ int client(int argc, char *argv[])
 
     if(inet_pton(AF_INET, argv[1], &serv_addr.sin_addr)<=0)
     {
-        printf("\n inet_pton error occured\n");
+        fprintf(stderr, "ERROR: inet_pton error occured\n");
         return 1;
     }
 
     if( connect(sockfd, (pSS)&serv_addr, sizeof(serv_addr)) < 0)
     {
-       printf("\n Error : Connect Failed \n");
+       fprintf(stderr, "ERROR:  Connect Failed\n");
        return 1;
     }
+
+    tv = tv5s;
+    select(0, NULL, NULL, NULL, &tv);
 
     FD_ZERO(rfds); FD_ZERO(wfds); FD_ZERO(efds);
     FD_SET(sockfd, rfds);
@@ -199,7 +202,7 @@ int client(int argc, char *argv[])
             recvBuff[n] = 0;
             if(fputs(recvBuff, stdout) == EOF)
             {
-                printf("\n Error : Fputs error\n");
+                fprintf(stderr, "Error:  fputs error\n");
             }
             break;
         }
