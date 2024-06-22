@@ -49,7 +49,7 @@ int server(int argc, char *argv[])
 
     while(1)
     {
-        struct timeval tv3s = {3, 0};
+        struct timeval tv2s = {2, 0};
         struct timeval tv;
         int n;
         maxfd = 0;
@@ -65,7 +65,7 @@ int server(int argc, char *argv[])
         }
         fprintf(stderr, "%16lx %16lx %16lx before\n", *((long*)rfds), *((long*)wfds), *((long*)efds));
 
-        tv = tv3s;
+        tv = tv2s;
         errno = 0;
         while (0 > (n=select(maxfd+1, rfds, wfds, efds, &tv)))
         {
