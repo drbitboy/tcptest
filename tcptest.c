@@ -134,7 +134,9 @@ int server(int argc, char *argv[])
 
 int client(int argc, char *argv[])
 {
-    int sockfd = 0, n = 0;
+    int sockfd = 0;
+    int n = 0;
+    int selreturn = 0;
     char recvBuff[1024];
     struct sockaddr_in serv_addr;
     int maxfd = 0;
@@ -177,50 +179,48 @@ int client(int argc, char *argv[])
        return 1;
     }
 
-    tv = tv5s;
-    select(0, NULL, NULL, NULL, &tv);
-
     FD_ZERO(rfds); FD_ZERO(wfds); FD_ZERO(efds);
     FD_SET(sockfd, rfds);
-    FD_SET(sockfd, efds);
+    //FD_SET(sockfd, efds);
 
-    tv = tv5s;
     errno = 0;
-    while (0 > (n=select(sockfd+1, rfds, wfds, efds, &tv)))
+
+    // Wait up to 5s for select, continue wait on signals
+    tv = tv5s;
+    while (0 > (selreturn=select(sockfd+1, rfds, wfds, efds, &tv)))
     {
         if (errno != EINTR) { perror("Non-EINTR error in select"); return -1; }
         fprintf(stderr,"%s\n", "I");
         errno = 0;
     }
-    if (!n)
+
+    errno = 0;
+    if (!selreturn)
     {
         fprintf(stderr, "Select timed out[%s]; closing sockfd[%d]\n", strerror(errno), sockfd);
     }
-    else
+    else if ( (n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0)
     {
-        errno = 0;
-        while ( (n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0)
+        // Write received data
+        recvBuff[n] = 0;
+        if(fputs(recvBuff, stdout) == EOF)
         {
-            recvBuff[n] = 0;
-            if(fputs(recvBuff, stdout) == EOF)
-            {
-                fprintf(stderr, "Error:  fputs error\n");
-            }
-            break;
-        }
-
-        if(n < 0)
-        {
-            fprintf(stderr, "Read error[%s]\n", strerror(errno));
-        }
-        else if(!n)
-        {
-            fprintf(stderr, "Remote connection closed during read[%s]; closing socket[%d]\n", strerror(errno),sockfd);
+            fprintf(stderr, "Error:  fputs error\n");
         }
     }
+    else if(n < 0)
+    {
+        // Log read error
+        fprintf(stderr, "Read error[%s]\n", strerror(errno));
+    }
+    else
+    {
+        // n is 0 because server closed socket
+        fprintf(stderr, "Remote connection read[%s] detected server closed socket; closing socket[%d] at this send\n", strerror(errno), sockfd);
+    }
 
+    // Cleanup and exit
     close(sockfd);
-
     return 0;
 }
 
