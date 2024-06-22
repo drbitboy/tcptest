@@ -28,6 +28,7 @@ int server(int argc, char *argv[])
     int connfd = -1;
     struct sockaddr_in serv_addr;
     int maxfd = 0;
+    int no_sends = 0;
     fd_set fds[3];
     fd_set* rfds = fds;
     fd_set* wfds = fds+1;
@@ -111,9 +112,16 @@ int server(int argc, char *argv[])
                 }
                 else if (!strcmp(argv[1],"--no-send"))
                 {
-                    fprintf(stderr, "Writeable fd %d[%s]\n", connfd, "doing nothing because of --no-send argument");
-                    *sendBuff = '\0';
-                    fprintf(stderr, "W%ld\n", nw=write(connfd, sendBuff, 1));
+                    if (5 > ++no_sends)
+                    {
+                       fprintf(stderr, "Writeable fd %d[%s]\n", connfd, "doing nothing because of --no-send argument");
+                    }
+                    else
+                    {
+                        fprintf(stderr, "Writeable fd %d[closing after %d no-sends]\n", connfd, no_sends);
+                        close(connfd);
+                        connfd = -1;
+                    }
                 }
             }
         }
