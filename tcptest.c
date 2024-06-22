@@ -224,7 +224,7 @@ int client(int argc, char *argv[])
     else
     {
         // n is 0 because server closed socket
-        fprintf(stderr, "Remote connection read[%s] detected server closed socket; closing socket[%d] at this send\n", strerror(errno), sockfd);
+        fprintf(stderr, "Remote connection read[%s] detected server closed socket; closing socket[%d] at client end\n", strerror(errno), sockfd);
     }
 
     // Cleanup and exit
