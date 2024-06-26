@@ -94,7 +94,6 @@ int server(int argc, char *argv[])
         errno = 0;
         fprintf(stderr,"S%d/%d/%lu/%lu\n", n, connfd, tv.tv_sec, tv.tv_usec);
         if (n < 0) { fprintf(stderr, "S/%s\n", strerror(errno)); }
-        if (tv.tv_sec || tv.tv_usec) { select(0, NULL, NULL, NULL, &tv); }
 
         if (opt_debug)
         {
@@ -159,6 +158,7 @@ int server(int argc, char *argv[])
             connfd = accept(listenfd, (pSS)NULL, NULL);
             fprintf(stderr, "L%d\n", connfd);
         }
+        if (tv.tv_sec || tv.tv_usec) { select(0, NULL, NULL, NULL, &tv); }
      }
 }
 
