@@ -123,6 +123,11 @@ int server(int argc, char *argv[])
                         close(connfd);
                         connfd = -1;
                     }
+                    else
+                    {
+                        char at = '@';
+                        fprintf(stderr, "W%ld/%ld\n", 1L, write(connfd, &at, 1));
+                    }
                 }
                 else if (!strcmp(argv[1],"--close"))
                 {
