@@ -41,9 +41,11 @@ int server(int argc, char *argv[])
 
     for (int iarg=1; iarg<argc; ++iarg)
     {
-        if (!strcmp(argv[iarg],"--close")) { opt_close = 1; continue; }
-        if (!strcmp(argv[iarg],"--no-send")) { opt_no_send = 1; continue; }
-        if (!strcmp(argv[iarg],"--debug")) { opt_debug = 1; continue; }
+#       define ARGCMP(OPT, S) \
+        OPT = !iarg ? 0 : (strcmp(argv[iarg],S) ? OPT : 1)
+        ARGCMP(opt_close,   "--close"  );
+        ARGCMP(opt_no_send, "--no-send");
+        ARGCMP(opt_debug,   "--debug"  );
     }
 
     listenfd = socket(AF_INET, SOCK_STREAM, 0);
