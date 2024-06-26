@@ -40,7 +40,7 @@ int server(int argc, char *argv[])
 
     noSIGPIPE();
 
-    for (int iarg=1; iarg<argc; ++iarg)
+    for (int iarg=0; iarg<argc; ++iarg)
     {
 #       define ARGCMP(OPT, S) \
         OPT = !iarg ? 0 : (strcmp(argv[iarg],S) ? OPT : 1)
@@ -137,16 +137,16 @@ int server(int argc, char *argv[])
             }
             if (FD_ISSET(connfd,wfds))
             {
-                // - ready to write
-                char sendBuff[1025];
-                time_t ticks;
-                ssize_t nw;
-                // - put time into a string
-                ticks = time(NULL);
-                snprintf(sendBuff, sizeof sendBuff, "%.24s\n", ctime(&ticks));
-                errno = 0;
                 if (!opt_close && !opt_no_send)
                 {
+                    // - ready to write
+                    char sendBuff[1025];
+                    time_t ticks;
+                    ssize_t nw;
+                    // - put time into a string
+                    ticks = time(NULL);
+                    snprintf(sendBuff, sizeof sendBuff, "%.24s\n", ctime(&ticks));
+                    errno = 0;
                     // - write time string to socket if netther
                     //   --close nor --no-send options were specified
                     fprintf(stderr, "W%ld/%ld\n", strlen(sendBuff), nw=write(connfd, sendBuff, strlen(sendBuff)));
