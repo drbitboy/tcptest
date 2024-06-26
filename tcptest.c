@@ -116,7 +116,7 @@ int server(int argc, char *argv[])
                 errno = 0;
                 if (argc<2 || (strcmp(argv[1],"--close") && strcmp(argv[1],"--no-send")))
                 {
-                    fprintf(stderr, "W%ld\n", nw=write(connfd, sendBuff, strlen(sendBuff)));
+                    fprintf(stderr, "W%ld/%ld\n", strlen(sendBuff), nw=write(connfd, sendBuff, strlen(sendBuff)));
                     if (nw < 0)
                     {
                         fprintf(stderr, "Closing fd %d[%s]\n", connfd, strerror(errno));
@@ -148,7 +148,7 @@ int server(int argc, char *argv[])
             }
         }
 
-        if (FD_ISSET(connfd,efds))
+        if (FD_ISSET(listenfd,efds))
         {
             fprintf(stderr, "EL%d\n", listenfd);
         }
@@ -158,6 +158,7 @@ int server(int argc, char *argv[])
             connfd = accept(listenfd, (pSS)NULL, NULL);
             fprintf(stderr, "L%d\n", connfd);
         }
+        // Delay for balance of time in select
         if (tv.tv_sec || tv.tv_usec) { select(0, NULL, NULL, NULL, &tv); }
      }
 }
@@ -212,7 +213,6 @@ int client(int argc, char *argv[])
 
     FD_ZERO(rfds); FD_ZERO(wfds); FD_ZERO(efds);
     FD_SET(sockfd, rfds);
-    //FD_SET(sockfd, efds);
 
     errno = 0;
 
