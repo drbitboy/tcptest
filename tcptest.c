@@ -26,7 +26,7 @@ int server(int argc, char *argv[])
 {
     int listenfd = 0;
     int connfd = -1;
-    struct sockaddr_in serv_addr;
+    struct sockaddr_in serv_addr_AF_INET;
     int maxfd = 0;
     int no_sends = 0;
     fd_set fds[3];
@@ -36,6 +36,7 @@ int server(int argc, char *argv[])
     int opt_close = 0;
     int opt_no_send = 0;
     int opt_debug = 0;
+    int one = 1;
 
     noSIGPIPE();
 
@@ -48,15 +49,35 @@ int server(int argc, char *argv[])
         ARGCMP(opt_debug,   "--debug"  );
     }
 
-    listenfd = socket(AF_INET, SOCK_STREAM, 0);
-    memset(&serv_addr, '0', sizeof serv_addr);
+    // Set up socket for listening
+    if (0 > (listenfd = socket(AF_INET, SOCK_STREAM, 0)))
+    {
+      fprintf(stderr, "socket: %s\n", strerror(errno));
+      return 1;
+    }
+    // - Allow that socket (addres/port) pair to have multiple servers
+    //   - N.B. this allows server to start when the (address/port) pair
+    //          is still in the TIME_WAIT state e.g. after another
+    //          server crashed
+    if (0 > ( setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR,(char *) &one, sizeof one)))
+    {
+        fprintf(stderr, "setsockopt[reuseport]: %s\n", strerror(errno));
+        close(listenfd);
+    }
+    if (0 > ( setsockopt(listenfd, SOL_SOCKET, SO_REUSEPORT,(char *) &one, sizeof one)))
+    {
+        fprintf(stderr, "setsockopt[reuseport]: %s\n", strerror(errno));
+        close(listenfd);
+    }
 
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    serv_addr.sin_port = htons((short)SCPORT);
+    // Bind listen socket to (addres/port) pair
+    memset(&serv_addr_AF_INET, '0', sizeof serv_addr_AF_INET);
+    serv_addr_AF_INET.sin_family = AF_INET;
+    serv_addr_AF_INET.sin_addr.s_addr = htonl(INADDR_ANY);
+    serv_addr_AF_INET.sin_port = htons((short)SCPORT);
+    bind(listenfd, (pSS)&serv_addr_AF_INET, sizeof serv_addr_AF_INET);
 
-    bind(listenfd, (pSS)&serv_addr, sizeof(serv_addr));
-
+    // Start listening on this port
     listen(listenfd, 10);
 
     while(1)
@@ -67,22 +88,26 @@ int server(int argc, char *argv[])
 
         maxfd = 0;
 
+        // Setup fd_set structures for select
         FD_ZERO(rfds); FD_ZERO(wfds); FD_ZERO(efds);
+        // - listening socket:  read and exception
         FD_SET(listenfd, rfds);
         FD_SET(listenfd, efds);
         maxfd = listenfd > maxfd ? listenfd : maxfd;
-
         if (connfd > -1)
         {
+            // - accepted socket:  write and exception
             FD_SET(connfd, wfds);
             FD_SET(connfd, efds);
             maxfd = connfd > maxfd ? connfd : maxfd;
         }
+
         if (opt_debug)
         {
             fprintf(stderr, "%16lx %16lx %16lx before\n", *((long*)rfds), *((long*)wfds), *((long*)efds));
         }
 
+        // Issue select; ignore signal interruptions
         tv = tv2s;
         errno = 0;
         while (0 > (n=select(maxfd+1, rfds, wfds, efds, &tv)))
@@ -100,22 +125,30 @@ int server(int argc, char *argv[])
             fprintf(stderr, "%16lx %16lx %16lx after\n", *((long*)rfds), *((long*)wfds), *((long*)efds));
         }
 
+        // Process select results
+
         if (connfd > -1)
         {
+            // Check accepted socket, if present
             if (FD_ISSET(connfd,efds))
             {
+                // - accepted socket exception; something should happen
                 fprintf(stderr, "EC%d\n", connfd);
             }
             if (FD_ISSET(connfd,wfds))
             {
+                // - ready to write
                 char sendBuff[1025];
                 time_t ticks;
                 ssize_t nw;
+                // - put time into a string
                 ticks = time(NULL);
                 snprintf(sendBuff, sizeof sendBuff, "%.24s\n", ctime(&ticks));
                 errno = 0;
-                if (argc<2 || (strcmp(argv[1],"--close") && strcmp(argv[1],"--no-send")))
+                if (!opt_close && !opt_no_send)
                 {
+                    // - write time string to socket if netther
+                    //   --close nor --no-send options were specified
                     fprintf(stderr, "W%ld/%ld\n", strlen(sendBuff), nw=write(connfd, sendBuff, strlen(sendBuff)));
                     if (nw < 0)
                     {
@@ -129,15 +162,17 @@ int server(int argc, char *argv[])
                         fprintf(stderr, "W%ld/%ld\n", 1L, write(connfd, &at, 1));
                     }
                 }
-                else if (!strcmp(argv[1],"--close"))
+                else if (opt_close)
                 {
                     // Close FD without writing anything
                     fprintf(stderr, "Closing, without writing, fd %d[%s]\n", connfd, "because of --close argument");
                     close(connfd);
                     connfd = -1;
                 }
-                else if (!strcmp(argv[1],"--no-send"))
+                else if (opt_no_send)
                 {
+                    // Close eventually, without writing anything,
+                    // if --no-send argument was specified
                     if (5 > ++no_sends)
                     {
                        fprintf(stderr, "Writeable fd %d[%s]\n", connfd, "doing nothing because of --no-send argument");
@@ -150,16 +185,19 @@ int server(int argc, char *argv[])
                         no_sends = 0;
                     }
                 }
-            }
-        }
+            } // if (FD_ISSET(connfd,wfds))
+        } // if (connfd > -1)
 
         if (FD_ISSET(listenfd,efds))
         {
+            // listen socket exception; something should happen
             fprintf(stderr, "EL%d\n", listenfd);
         }
 
         if (connfd == -1 && FD_ISSET(listenfd,rfds))
         {
+            // listen socket accept new connection, only after previous
+            // accepted socket has closed
             connfd = accept(listenfd, (pSS)NULL, NULL);
             fprintf(stderr, "L%d\n", connfd);
         }
@@ -175,7 +213,7 @@ int client(int argc, char *argv[])
     int n = 0;
     int selreturn = 0;
     char recvBuff[1024];
-    struct sockaddr_in serv_addr;
+    struct sockaddr_in serv_addr_AF_INET;
     int maxfd = 0;
 
     struct timeval tv5s = {5, 0};
@@ -199,18 +237,18 @@ int client(int argc, char *argv[])
         return 1;
     }
 
-    memset(&serv_addr, '0', sizeof(serv_addr));
+    memset(&serv_addr_AF_INET, '0', sizeof(serv_addr_AF_INET));
 
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons((short)SCPORT);
+    serv_addr_AF_INET.sin_family = AF_INET;
+    serv_addr_AF_INET.sin_port = htons((short)SCPORT);
 
-    if(inet_pton(AF_INET, argv[1], &serv_addr.sin_addr)<=0)
+    if(inet_pton(AF_INET, argv[1], &serv_addr_AF_INET.sin_addr)<=0)
     {
         fprintf(stderr, "ERROR: inet_pton error occured\n");
         return 1;
     }
 
-    if( connect(sockfd, (pSS)&serv_addr, sizeof(serv_addr)) < 0)
+    if( connect(sockfd, (pSS)&serv_addr_AF_INET, sizeof(serv_addr_AF_INET)) < 0)
     {
        fprintf(stderr, "ERROR:  Connect Failed\n");
        return 1;
