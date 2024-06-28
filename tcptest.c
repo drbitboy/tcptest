@@ -198,8 +198,6 @@ int server(int argc, char *argv[])
                         {
                             opt_close = 0;
                             opt_no_send = 0;
-                            tv.tv_sec = 5;
-                            select(0, NULL, NULL, NULL, &tv);
                         }
                     }
                 }
@@ -290,7 +288,7 @@ int client(int argc, char *argv[])
     if (!selreturn)
     {
         fprintf(stderr, "Select timed out[%s]; closing sockfd[%d]\n", strerror(errno), sockfd);
-        tv = tv5s;
+        tv.tv_sec = 9;
         select(0, NULL, NULL, NULL, &tv);
     }
     else if ( (n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0)
