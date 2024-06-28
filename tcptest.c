@@ -35,6 +35,7 @@ int server(int argc, char *argv[])
     fd_set* efds = fds+2;
     int opt_close = 0;
     int opt_no_send = 0;
+    int opt_rotate = 0;
     int opt_debug = 0;
     int one = 1;
 
@@ -46,6 +47,7 @@ int server(int argc, char *argv[])
         OPT = !iarg ? 0 : (strcmp(argv[iarg],S) ? OPT : 1)
         ARGCMP(opt_close,   "--close"  );
         ARGCMP(opt_no_send, "--no-send");
+        ARGCMP(opt_rotate,  "--rotate" );
         ARGCMP(opt_debug,   "--debug"  );
     }
 
@@ -155,6 +157,11 @@ int server(int argc, char *argv[])
                         fprintf(stderr, "Closing fd %d[%s]\n", connfd, strerror(errno));
                         close(connfd);
                         connfd = -1;
+                        if (opt_rotate)
+                        {
+                            opt_close = 1;
+                            opt_no_send = 0;
+                        }
                     }
                     else
                     {
@@ -165,17 +172,21 @@ int server(int argc, char *argv[])
                 else if (opt_close)
                 {
                     // Close FD without writing anything
-                    fprintf(stderr, "Closing, without writing, fd %d[%s]\n", connfd, "because of --close argument");
+                    fprintf(stderr, "Closing, without writing, fd %d[%s]\n", connfd, "because of --close/--rotate argument");
                     close(connfd);
                     connfd = -1;
+                    if (opt_rotate)
+                    {
+                        opt_close = 0;
+                        opt_no_send = 1;
+                    }
                 }
                 else if (opt_no_send)
                 {
                     // Close eventually, without writing anything,
-                    // if --no-send argument was specified
                     if (5 > ++no_sends)
                     {
-                       fprintf(stderr, "Writeable fd %d[%s]\n", connfd, "doing nothing because of --no-send argument");
+                       fprintf(stderr, "Writeable fd %d[%s]\n", connfd, "doing nothing because of --no-send/--rotate argument");
                     }
                     else
                     {
@@ -183,6 +194,13 @@ int server(int argc, char *argv[])
                         close(connfd);
                         connfd = -1;
                         no_sends = 0;
+                        if (opt_rotate)
+                        {
+                            opt_close = 0;
+                            opt_no_send = 0;
+                            tv.tv_sec = 5;
+                            select(0, NULL, NULL, NULL, &tv);
+                        }
                     }
                 }
             } // if (FD_ISSET(connfd,wfds))
@@ -272,6 +290,8 @@ int client(int argc, char *argv[])
     if (!selreturn)
     {
         fprintf(stderr, "Select timed out[%s]; closing sockfd[%d]\n", strerror(errno), sockfd);
+        tv = tv5s;
+        select(0, NULL, NULL, NULL, &tv);
     }
     else if ( (n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0)
     {
