@@ -7,6 +7,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
+#include <sys/fcntl.h>
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -247,7 +248,7 @@ int client(int argc, char *argv[])
     }
 
     memset(recvBuff, '0',sizeof(recvBuff));
-    if((sockfd = socket(AF_INET, SOCK_STREAM|SOCK_NONBLOCK, 0)) < 0)
+    if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
         fprintf(stderr, "ERROR:  Could not create socket\n");
         return 1;
@@ -267,7 +268,13 @@ int client(int argc, char *argv[])
     if( connect(sockfd, (pSS)&serv_addr_AF_INET, sizeof(serv_addr_AF_INET)) < 0)
     {
        fprintf(stderr, "ERROR:  Connect Failed\n");
-       return 1;
+       return 2;
+    }
+
+    if (0 > fcntl(sockfd, F_SETFL, fcntl(sockfd, F_GETFL, 0) | O_NONBLOCK))
+    {
+       fprintf(stderr, "ERROR:  fcntl(%d, F_GETFL, ...|O_NONBLOCK) Failed[%s]\n", sockfd, strerror(errno));
+       return 3;
     }
 
     FD_ZERO(rfds); FD_ZERO(wfds); FD_ZERO(efds);
