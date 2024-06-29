@@ -293,6 +293,7 @@ int client(int argc, char *argv[])
     }
     else if ( (n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0)
     {
+        fprintf(stderr, "R[%d]=%d\n", sockfd, n);
         // Write received data
         recvBuff[n] = 0;
         if(fputs(recvBuff, stdout) == EOF)
@@ -323,7 +324,7 @@ int main(int arg, char *argv[])
     while (pbn >= argv[0] &&*pbn != '/') { pbn0 = pbn--; }
 
 #   define IS_CLIENT ((*pbn0)=='c')
-    fprintf(stderr,"Calling %s...\n", IS_CLIENT ? "client" : "server");
+    fprintf(stderr,"Starting %s...\n", IS_CLIENT ? "client" : "server");
     if (IS_CLIENT) { return client(arg,argv); }
     return server(arg, argv);
 }
