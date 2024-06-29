@@ -52,7 +52,7 @@ int server(int argc, char *argv[])
     }
 
     // Set up socket for listening
-    if (0 > (listenfd = socket(AF_INET, SOCK_STREAM, 0)))
+    if (0 > (listenfd = socket(AF_INET, SOCK_STREAM|SOCK_NONBLOCK, 0)))
     {
       fprintf(stderr, "socket: %s\n", strerror(errno));
       return 1;
@@ -247,7 +247,7 @@ int client(int argc, char *argv[])
     }
 
     memset(recvBuff, '0',sizeof(recvBuff));
-    if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    if((sockfd = socket(AF_INET, SOCK_STREAM|SOCK_NONBLOCK, 0)) < 0)
     {
         fprintf(stderr, "ERROR:  Could not create socket\n");
         return 1;
@@ -293,13 +293,23 @@ int client(int argc, char *argv[])
     }
     else if ( (n = read(sockfd, recvBuff, sizeof(recvBuff)-1)) > 0)
     {
-        fprintf(stderr, "R[%d]=%d\n", sockfd, n);
+        char c1;
+        int errno0;
+        int errno1;
+        int n1;
+        errno0 = errno;
+        errno = 0;
+        n1 = read(sockfd, &c1, 1);
+        fprintf(stderr, "R[%d]=%d[%s]\n", sockfd, n, strerror(errno0));
+        errno1 = errno;
         // Write received data
         recvBuff[n] = 0;
+        errno = 0;
         if(fputs(recvBuff, stdout) == EOF)
         {
             fprintf(stderr, "Error:  fputs error\n");
         }
+        fprintf(stderr, "R[%d]=%d[%s]'0x%02x'\n", sockfd, n1, strerror(errno1), (int)c1);
     }
     else if(n < 0)
     {
