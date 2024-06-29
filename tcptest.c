@@ -287,7 +287,7 @@ int client(int argc, char *argv[])
     errno = 0;
     if (!selreturn)
     {
-        fprintf(stderr, "Select timed out[%s]; closing sockfd[%d]\n", strerror(errno), sockfd);
+        fprintf(stderr, "Select timed out[%s]; closing sockfd[%d] at client end and waiting 9s to exit\n", strerror(errno), sockfd);
         tv.tv_sec = 9;
         select(0, NULL, NULL, NULL, &tv);
     }
